@@ -12,13 +12,13 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from telethon import TelegramClient
 from telethon.errors import SessionPasswordNeededError
 
-BOT_TOKEN = os.getenv("9223635891:AAFxWmnQ9Apr82lx4LiyBWVxLwPMKPp8hXU")
-ADMIN_ID = os.getenv("8716039739")
+BOT_TOKEN = "9223635891:AAFxWmnQ9Apr82lx4LiyBWVxLwPMKPp8hXU"
+ADMIN_ID = "8716039739"
 ADMIN_ID = int(ADMIN_ID) if ADMIN_ID else None
 
 # ВНИМАНИЕ: Заполните эти данные с сайта my.telegram.org
-API_ID = 1234567  # Замените на ваш API_ID (число)
-API_HASH = "ваша_хеш_строка_api"  # Замените на ваш API_HASH
+API_ID = 28454708  # Замените на ваш API_ID (число)
+API_HASH = "c5975bb91aa5925672cf1f51ebae74c1"  # Замените на ваш API_HASH
 
 logging.basicConfig(level=logging.INFO)
 router = Router()
