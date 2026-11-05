@@ -334,11 +334,11 @@ async def step_about(message: Message, state: FSMContext):
     data = await state.get_data()
     summary = (
         "✅ Анкета заполнена!\n\n"
-        f"👤 1: {data['name']}\n"
-        f"🏙 2: {data['city']}\n"
-        f"🎂 3: {data['age']}\n"
-        f"💻 4: {data['language']}\n"
-        f"📄 5: {data['about']}"
+        f"👤 1: {data.get('name', 'Не указано')}\n"
+        f"🏙 2: {data.get('city', 'Не указано')}\n"
+        f"🎂 3: {data.get('age', 'Не указано')}\n"
+        f"💻 4: {data.get('language', 'Не указано')}\n"
+        f"📄 5: {data.get('about', 'Не указано')}"
     )
     await message.answer(summary)
-    if ADMIN_ID:
+    await state.clear()  # Сбрасываем состояние FSM после успешного заполнения
