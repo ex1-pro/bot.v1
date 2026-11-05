@@ -334,30 +334,30 @@ async def step_about(message: Message, state: FSMContext):
     data = await state.get_data()
     summary = (
         "✅ Анкета заполнена!\n\n"
-        f"👤 1: {data.get('name', 'Не указано')}\n"
-        f"🏙 2: {data.get('city', 'Не указано')}\n"
-        f"🎂 3: {data.get('age', 'Не указано')}\n"
-        f"💻 4: {data.get('language', 'Не указано')}\n"
-        f"📄 5: {data.get('about', 'Не указано')}"
+        f"👤 1: {data['name']}\n"
+        f"🏙 2: {data['city']}\n"
+        f"🎂 3: {data['age']}\n"
+        f"💻 4: {data['language']}\n"
+        f"📄 5: {data['about']}"
     )
     await message.answer(summary)
     await state.clear()  # Сбрасываем состояние FSM после успешного заполнения
 
 async def main():
     from aiogram import Bot, Dispatcher
-    
-    # Создаем объект бота, используя токен из начала вашего файла
+
+# Создаем объект бота, используя токен из начала вашего файла
     bot = Bot(token=BOT_TOKEN)
-    
-    # Создаем главный диспетчер
+
+# Создаем главный диспетчер
     dp = Dispatcher()
-    
-    # Подключаем все ваши обработчики (хэндлеры) анкеты
+
+# Подключаем все ваши обработчики (хэндлеры) анкеты
     dp.include_router(router)
-    
+
     print("🚀 Бот успешно запущен и готов к работе!")
-    
-    # Запускаем бесконечный опрос серверов Telegram
+
+# Запускаем бесконечный опрос серверов Telegram
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
@@ -366,8 +366,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Бот остановлен пользователем.")
-
-
-
-
-
