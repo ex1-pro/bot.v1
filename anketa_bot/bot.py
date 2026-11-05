@@ -344,8 +344,28 @@ async def step_about(message: Message, state: FSMContext):
     await state.clear()  # Сбрасываем состояние FSM после успешного заполнения
 
 async def main():
+    from aiogram import Bot, Dispatcher
+    
+    # Создаем объект бота, используя токен из начала вашего файла
+    bot = Bot(token=BOT_TOKEN)
+    
+    # Создаем главный диспетчер
+    dp = Dispatcher()
+    
+    # Подключаем все ваши обработчики (хэндлеры) анкеты
+    dp.include_router(router)
+    
+    print("🚀 Бот успешно запущен и готов к работе!")
+    
+    # Запускаем бесконечный опрос серверов Telegram
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import asyncio
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Бот остановлен пользователем.")
+
+
 
